@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-bos-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: ai_bos_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-bos-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bull-board:
+    image: node:20-alpine
+    container_name: ai-bos-bull-board
+    restart: always
+    ports:
+      - "3002:3002"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 3002
+    command: >
+      sh -c "npx -y bull-board-cli --redis-host redis --redis-port 6379 --port 3002"
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
